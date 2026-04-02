@@ -5,6 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, TrendingUp, History } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 interface DashboardData {
   totalStockValue: number;
@@ -15,6 +27,19 @@ interface DashboardData {
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const lowStockChartData = data?.lowStockItems?.map((item: any) => ({
+    name: item.sku,
+    value: item.totalQuantity,
+  })) || [];
+
+  const movementChartData = data?.recentMovements?.reduce((acc: any[], item: any) => {
+    const type = item.movementType || "UNKNOWN";
+    const existing = acc.find((row) => row.type === type);
+    if (existing) existing.count += 1;
+    else acc.push({ type, count: 1 });
+    return acc;
+  }, []) || [];
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -74,6 +99,56 @@ export default function Dashboard() {
           <CardContent>
             <p className="text-3xl font-bold">{data?.recentMovements?.length ?? 0}</p>
             <p className="text-xs text-muted-foreground mt-1">Latest stock transactions</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Low Stock Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {lowStockChartData.length > 0 ? (
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={lowStockChartData} dataKey="value" nameKey="name" outerRadius={80} fill="#2563eb" label>
+                      {lowStockChartData.map((entry, index) => (
+                        <Cell key={entry.name} fill={["#3b82f6", "#ef4444", "#f59e0b", "#10b981"][index % 4]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No low-stock data to chart.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Movement Type Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {movementChartData.length > 0 ? (
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={movementChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="type" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#6366f1" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No movement data to chart.</p>
+            )}
           </CardContent>
         </Card>
       </div>

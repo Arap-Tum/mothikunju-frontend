@@ -12,6 +12,7 @@ import Inventory from "@/pages/Inventory";
 import ReceiveStock from "@/pages/ReceiveStock";
 import DispatchStock from "@/pages/DispatchStock";
 import StockHistory from "@/pages/StockHistory";
+import StockTransfer from "@/pages/StockTransfer";
 import UsersPage from "@/pages/Users";
 import Register from "@/pages/Register";
 import NotFound from "@/pages/NotFound";
@@ -62,6 +63,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AppLayout><StockHistory /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transfer"
+        element={
+          <ProtectedRoute>
+            <AppLayout><StockTransfer /></AppLayout>
           </ProtectedRoute>
         }
       />

@@ -55,6 +55,8 @@ export const stockApi = {
   receive: (data: any) => api.post("/api/stock/receive", data),
   dispatch: (data: { sku: string; quantity: number }) =>
     api.post("/api/stock/dispatch", data),
+  transfer: (data: { sku: string; sourceBatch: string; destinationBatch: string; quantity: number }) =>
+    api.post("/api/stock/transfer", data),
   history: () => api.get("/api/stock/history"),
 };
 

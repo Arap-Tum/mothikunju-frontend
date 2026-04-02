@@ -24,16 +24,17 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-const mainNav = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "Receive Stock", url: "/receive", icon: PackagePlus },
-  { title: "Dispatch Stock", url: "/dispatch", icon: PackageMinus },
-  { title: "Stock History", url: "/history", icon: History },
+const navItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["Admin", "Warehouse Clerk"] },
+  { title: "Inventory", url: "/inventory", icon: Package, roles: ["Admin", "Warehouse Clerk"] },
+  { title: "Receive Stock", url: "/receive", icon: PackagePlus, roles: ["Admin", "Warehouse Clerk"] },
+  { title: "Dispatch Stock", url: "/dispatch", icon: PackageMinus, roles: ["Admin", "Warehouse Clerk"] },
+  { title: "Stock Transfer", url: "/transfer", icon: PackagePlus, roles: ["Admin", "Warehouse Clerk"] },
+  { title: "Stock History", url: "/history", icon: History, roles: ["Admin", "Warehouse Clerk"] },
 ];
 
 const adminNav = [
-  { title: "Users", url: "/users", icon: Users },
+  { title: "Users", url: "/users", icon: Users, roles: ["Admin"] },
 ];
 
 export function AppSidebar() {
@@ -62,16 +63,18 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className="hover:bg-sidebar-accent/50" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems
+                .filter((item) => item.roles.includes(user?.role ?? ""))
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink to={item.url} end className="hover:bg-sidebar-accent/50" activeClassName="bg-sidebar-accent text-sidebar-primary font-medium">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
