@@ -38,7 +38,11 @@ describe("Inventory page", () => {
     fireEvent.change(screen.getByLabelText("Product Name"), { target: { value: "Spray" } });
     fireEvent.change(screen.getByLabelText("Category"), { target: { value: "Tools" } });
     fireEvent.change(screen.getByLabelText("Reorder Level"), { target: { value: "5" } });
-    fireEvent.change(screen.getByLabelText("Batches (comma-separated)"), { target: { value: "B-15" } });
+    fireEvent.change(screen.getByLabelText("Batch Number"), { target: { value: "B-15" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("Manufacture Date"), { target: { value: "2026-04-01" } });
+    fireEvent.change(screen.getByLabelText("Expiry Date"), { target: { value: "2027-04-01" } });
+    fireEvent.change(screen.getByLabelText("Storage Location Code"), { target: { value: "A-1-01" } });
 
     (inventoryApi.create as any).mockResolvedValue({
       data: {
@@ -47,8 +51,8 @@ describe("Inventory page", () => {
         productName: "Spray",
         category: "Tools",
         reorderLevel: 5,
-        totalQuantity: 0,
-        batches: ["B-15"],
+        totalQuantity: 100,
+        batches: [{ batchNumber: "B-15", quantity: 100, manufactureDate: "2026-04-01", expiryDate: "2027-04-01", storageLocationCode: "A-1-01" }],
       },
     });
 
@@ -59,7 +63,7 @@ describe("Inventory page", () => {
       productName: "Spray",
       category: "Tools",
       reorderLevel: 5,
-      batches: ["B-15"],
+      batches: [{ batchNumber: "B-15", quantity: 100, manufactureDate: "2026-04-01", expiryDate: "2027-04-01", storageLocationCode: "A-1-01" }],
     }));
   });
 });

@@ -31,7 +31,11 @@ export default function Inventory() {
     productName: "",
     category: "",
     reorderLevel: "0",
-    batches: "",
+    batchNumber: "",
+    quantity: "",
+    manufactureDate: "",
+    expiryDate: "",
+    storageLocationCode: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -62,19 +66,24 @@ export default function Inventory() {
   const resetForm = () => {
     setMode("create");
     setEditingId(null);
-    setForm({ sku: "", productName: "", category: "", reorderLevel: "0", batches: "" });
+    setForm({ sku: "", productName: "", category: "", reorderLevel: "0", batchNumber: "", quantity: "", manufactureDate: "", expiryDate: "", storageLocationCode: "" });
     setErrors({});
   };
 
   const handleEdit = (item: InventoryItem) => {
     setMode("edit");
     setEditingId(item._id);
+    const firstBatch = item.batches?.[0] || {};
     setForm({
       sku: item.sku,
       productName: item.productName,
       category: item.category,
       reorderLevel: String(item.reorderLevel),
-      batches: item.batches?.join(", ") ?? "",
+      batchNumber: firstBatch.batchNumber || "",
+      quantity: String(firstBatch.quantity || ""),
+      manufactureDate: firstBatch.manufactureDate || "",
+      expiryDate: firstBatch.expiryDate || "",
+      storageLocationCode: firstBatch.storageLocationCode || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -95,10 +104,13 @@ export default function Inventory() {
     setSaving(true);
     setErrors({});
 
-    const payload = {
-      sku: form.sku.trim(),
-      productName: form.productName.trim(),
-      category: form.category.trim(),
+    const paylo[{
+        batchNumber: form.batchNumber.trim(),
+        quantity: Number(form.quantity),
+        manufactureDate: form.manufactureDate,
+        expiryDate: form.expiryDate,
+        storageLocationCode: form.storageLocationCode.trim(),
+      }]egory.trim(),
       reorderLevel: Number(form.reorderLevel),
       batches: form.batches
         .split(",")
@@ -189,15 +201,62 @@ export default function Inventory() {
                   id="reorderLevel"
                   type="number"
                   min={0}
-                  value={form.reorderLevel}
-                  onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })}
+                 className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="batchNumber">Batch Number</Label>
+                <Input
+                  id="batchNumber"
+                  value={form.batchNumber}
+                  onChange={(e) => setForm({ ...form, batchNumber: e.target.value })}
                   required
                 />
-                {errors.reorderLevel && <p className="text-xs text-destructive">{errors.reorderLevel}</p>}
+                {errors.batchNumber && <p className="text-xs text-destructive">{errors.batchNumber}</p>}
+              </div>
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  value={form.quantity}
+                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                  required
+                />
+                {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
+              </div>
+              <div>
+                <Label htmlFor="manufactureDate">Manufacture Date</Label>
+                <Input
+                  id="manufactureDate"
+                  type="date"
+                  value={form.manufactureDate}
+                  onChange={(e) => setForm({ ...form, manufactureDate: e.target.value })}
+                  required
+                />
+                {errors.manufactureDate && <p className="text-xs text-destructive">{errors.manufactureDate}</p>}
+              </div>
+              <div>
+                <Label htmlFor="expiryDate">Expiry Date</Label>
+                <Input
+                  id="expiryDate"
+                  type="date"
+                  value={form.expiryDate}
+                  onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+                  required
+                />
+                {errors.expiryDate && <p className="text-xs text-destructive">{errors.expiryDate}</p>}
               </div>
             </div>
 
             <div>
+              <Label htmlFor="storageLocationCode">Storage Location Code</Label>
+              <Input
+                id="storageLocationCode"
+                value={form.storageLocationCode}
+                onChange={(e) => setForm({ ...form, storageLocationCode: e.target.value })}
+                required
+              />
+              {errors.storageLocationCode && <p className="text-xs text-destructive">{errors.storageLocationCode
               <Label htmlFor="batches">Batches (comma-separated)</Label>
               <Input
                 id="batches"
@@ -266,7 +325,7 @@ export default function Inventory() {
                       <TableCell>{item.category}</TableCell>
                       <TableCell>{item.totalQuantity}</TableCell>
                       <TableCell>{item.reorderLevel}</TableCell>
-                      <TableCell>{item.batches?.join(", ") || "—"}</TableCell>
+                      <TableCell>{item.batches?.map(b => b.batchNumber).join(", ") || "—"}</TableCell>
                       <TableCell className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEdit(item)}>
                           <Edit className="mr-1 h-3.5 w-3.5" /> Edit
