@@ -106,6 +106,8 @@ export default function Inventory() {
         .filter(Boolean),
     };
 
+    console.log("Sending payload:", payload); // Debug log
+
     try {
       if (!payload.sku || !payload.productName || !payload.category || payload.reorderLevel < 0) {
         throw { response: { data: { message: "Validation error", errors: { sku: "Required" } } } };
