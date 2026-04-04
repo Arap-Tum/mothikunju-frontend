@@ -104,18 +104,20 @@ export default function Inventory() {
     setSaving(true);
     setErrors({});
 
-    const paylo[{
-        batchNumber: form.batchNumber.trim(),
-        quantity: Number(form.quantity),
-        manufactureDate: form.manufactureDate,
-        expiryDate: form.expiryDate,
-        storageLocationCode: form.storageLocationCode.trim(),
-      }]egory.trim(),
+    const payload = {
+      sku: form.sku.trim(),
+      productName: form.productName.trim(),
+      category: form.category.trim(),
       reorderLevel: Number(form.reorderLevel),
-      batches: form.batches
-        .split(",")
-        .map((b) => b.trim())
-        .filter(Boolean),
+      batches: [
+        {
+          batchNumber: form.batchNumber.trim(),
+          quantity: Number(form.quantity),
+          manufactureDate: form.manufactureDate,
+          expiryDate: form.expiryDate,
+          storageLocationCode: form.storageLocationCode.trim(),
+        },
+      ],
     };
 
     console.log("Sending payload:", payload); // Debug log

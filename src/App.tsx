@@ -9,10 +9,11 @@ import AppLayout from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Inventory from "@/pages/Inventory";
-import ReceiveStock from "@/pages/ReceiveStock";
-import DispatchStock from "@/pages/DispatchStock";
-import StockHistory from "@/pages/StockHistory";
-import StockTransfer from "@/pages/StockTransfer";
+import Receiving from "@/pages/Receiving";
+import Dispatch from "@/pages/Dispatch";
+import Orders from "@/pages/Orders";
+import Picking from "@/pages/Picking";
+import Packing from "@/pages/Packing";
 import UsersPage from "@/pages/Users";
 import Register from "@/pages/Register";
 import NotFound from "@/pages/NotFound";
@@ -26,6 +27,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+      
+      {/* Dashboard - All authenticated users */}
       <Route
         path="/"
         element={
@@ -34,54 +37,71 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
+      {/* Orders - Sales Staff can create, others can view */}
       <Route
-        path="/inventory"
+        path="/orders"
         element={
           <ProtectedRoute>
-            <AppLayout><Inventory /></AppLayout>
+            <AppLayout><Orders /></AppLayout>
           </ProtectedRoute>
         }
       />
+      
+      {/* Picking - Warehouse Manager, Picker */}
+      <Route
+        path="/picking"
+        element={
+          <ProtectedRoute requiredRoles={["Warehouse Manager", "Picker"]}>
+            <AppLayout><Picking /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Packing - Warehouse Manager, Packer */}
+      <Route
+        path="/packing"
+        element={
+          <ProtectedRoute requiredRoles={["Warehouse Manager", "Packer"]}>
+            <AppLayout><Packing /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Receiving - Warehouse Manager, Receiving Officer, Inventory Manager */}
       <Route
         path="/receive"
         element={
-          <ProtectedRoute>
-            <AppLayout><ReceiveStock /></AppLayout>
+          <ProtectedRoute requiredRoles={[
+            "Warehouse Manager",
+            "Receiving Officer",
+            "Inventory Manager",
+          ]}>
+            <AppLayout><Receiving /></AppLayout>
           </ProtectedRoute>
         }
       />
+      
+      {/* Dispatch - Warehouse Manager, Dispatch Officer */}
       <Route
         path="/dispatch"
         element={
-          <ProtectedRoute>
-            <AppLayout><DispatchStock /></AppLayout>
+          <ProtectedRoute requiredRoles={["Warehouse Manager", "Dispatch Officer"]}>
+            <AppLayout><Dispatch /></AppLayout>
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/history"
-        element={
-          <ProtectedRoute>
-            <AppLayout><StockHistory /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/transfer"
-        element={
-          <ProtectedRoute>
-            <AppLayout><StockTransfer /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
+      
+      {/* User Management - Warehouse Manager only */}
       <Route
         path="/users"
         element={
-          <ProtectedRoute requiredRole="Admin">
+          <ProtectedRoute requiredRoles="Warehouse Manager">
             <AppLayout><UsersPage /></AppLayout>
           </ProtectedRoute>
         }
       />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

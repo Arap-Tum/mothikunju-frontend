@@ -1,237 +1,399 @@
-import { useEffect, useState } from "react";
-import { dashboardApi } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { auditService, orderService } from "@/lib/services";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, TrendingUp, History } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
 import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
+import { Order } from "@/types";
+import {
+  Package,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 
-interface DashboardData {
-  totalStockValue: number;
-  lowStockItems: any[];
-  recentMovements: any[];
+interface CriticalItems {
+  summary?: {
+    totalLowStock: number;
+    totalExpired: number;
+    totalExpiring: number;
+  };
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { user, isWarehouseManager, isInventoryManager, isPicker, isPacker, isDispatchOfficer, isSalesStaff, isReceivingOfficer } = useAuth();
+  const { toast } = useToast();
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [criticalItems, setCriticalItems] = useState<CriticalItems | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const lowStockChartData = data?.lowStockItems?.map((item: any) => ({
-    name: item.sku,
-    value: item.totalQuantity,
-  })) || [];
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Load common data
+      if (isWarehouseManager || isInventoryManager) {
+        const critical = await auditService.getCriticalItems();
+        setCriticalItems(critical);
+      }
 
-  const movementChartData = data?.recentMovements?.reduce((acc: any[], item: any) => {
-    const type = item.movementType || "UNKNOWN";
-    const existing = acc.find((row) => row.type === type);
-    if (existing) existing.count += 1;
-    else acc.push({ type, count: 1 });
-    return acc;
-  }, []) || [];
+      if (isSalesStaff) {
+        const orders = await orderService.getMyOrders();
+        setRecentOrders(orders.slice(0, 5));
+      } else {
+        const orders = await orderService.getAll();
+        setRecentOrders(orders.slice(0, 5));
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [isWarehouseManager, isInventoryManager, isSalesStaff, toast]);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await dashboardApi.get();
-        setData(res.data);
-      } catch (err: any) {
-        toast.error("Failed to load dashboard");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboard();
-  }, []);
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString();
+  };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <div className="text-center py-8">Loading dashboard...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Stock Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{data?.totalStockValue?.toLocaleString() ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-1">Total units across all SKUs</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-destructive">{data?.lowStockItems?.length ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-1">Items below reorder level</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Recent Movements</CardTitle>
-            <History className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{data?.recentMovements?.length ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-1">Latest stock transactions</p>
-          </CardContent>
-        </Card>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Welcome, {user?.name}</h1>
+        <p className="text-gray-600">
+          You are logged in as <span className="font-semibold">{user?.role}</span>
+        </p>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Low Stock Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lowStockChartData.length > 0 ? (
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={lowStockChartData} dataKey="value" nameKey="name" outerRadius={80} fill="#2563eb" label>
-                      {lowStockChartData.map((entry, index) => (
-                        <Cell key={entry.name} fill={["#3b82f6", "#ef4444", "#f59e0b", "#10b981"][index % 4]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No low-stock data to chart.</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Role-Specific Dashboard Content */}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Movement Type Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {movementChartData.length > 0 ? (
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={movementChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="type" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#6366f1" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No movement data to chart.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Warehouse Manager Dashboard */}
+      {isWarehouseManager && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  <Package className="w-4 h-4 inline mr-2" />
+                  Total Orders
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{recentOrders.length}</p>
+              </CardContent>
+            </Card>
 
-      {/* Low Stock Items */}
-      {data?.lowStockItems && data.lowStockItems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              Low Stock Items
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            {criticalItems && (
+              <>
+                <Card className="border-yellow-200 bg-yellow-50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-yellow-800">
+                      <AlertTriangle className="w-4 h-4 inline mr-2" />
+                      Low Stock Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-yellow-900">
+                      {criticalItems.summary?.totalLowStock || 0}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-red-800">
+                      <AlertTriangle className="w-4 h-4 inline mr-2" />
+                      Expired Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-red-900">
+                      {criticalItems.summary?.totalExpired || 0}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-orange-200 bg-orange-50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-orange-800">
+                      <TrendingUp className="w-4 h-4 inline mr-2" />
+                      Expiring Soon
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-orange-900">
+                      {criticalItems.summary?.totalExpiring || 0}
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+
+          {/* Quick Links for Warehouse Manager */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-blue-200 bg-blue-50 cursor-pointer hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-base">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm">• Manage Users</p>
+                <p className="text-sm">• View Reports</p>
+                <p className="text-sm">• Assign Tasks</p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
+      {/* Inventory Manager Dashboard */}
+      {isInventoryManager && (
+        <>
+          {criticalItems && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-yellow-200 bg-yellow-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{criticalItems.summary?.totalLowStock || 0}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-red-200 bg-red-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Expired Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{criticalItems.summary?.totalExpired || 0}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-orange-200 bg-orange-50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{criticalItems.summary?.totalExpiring || 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventory Management Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                <li className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Conduct Physical Audits</li>
+                <li className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> View Stock Movement History</li>
+                <li className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Generate Accuracy Reports</li>
+                <li className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Monitor Inventory Levels</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Picker Dashboard */}
+      {isPicker && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Your Picking Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">View and update your assigned picking orders</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Picking Instructions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>1. Check the picklist</p>
+              <p>2. Pick items from shelves</p>
+              <p>3. Mark items as picked</p>
+              <p>4. Items ready for packing</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Packer Dashboard */}
+      {isPacker && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-purple-200 bg-purple-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Your Packing Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">View and confirm your assigned packing orders</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Packing Instructions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>1. Get picked items ready</p>
+              <p>2. Verify items match order</p>
+              <p>3. Pack into boxes/containers</p>
+              <p>4. Mark as packed when complete</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Dispatch Officer Dashboard */}
+      {isDispatchOfficer && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Dispatch Operations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Manage shipments and track deliveries</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Dispatch Process</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>1. View ready-to-ship orders</p>
+              <p>2. Generate tracking numbers</p>
+              <p>3. Confirm shipment</p>
+              <p>4. Mark as delivered</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Receiving Officer Dashboard */}
+      {isReceivingOfficer && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-cyan-200 bg-cyan-50">
+            <CardHeader>
+              <CardTitle className="text-lg">Receiving Operations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600">Manage incoming goods and update inventory</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Receiving Process</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>1. Create receiving document</p>
+              <p>2. Update received quantities</p>
+              <p>3. Inspect goods</p>
+              <p>4. Accept or reject</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Sales Staff Dashboard */}
+      {isSalesStaff && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {recentOrders.filter(o => o.orderStatus === 'pending').length}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {recentOrders.filter(o => ['picking', 'packing', 'packed'].includes(o.orderStatus)).length}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {recentOrders.filter(o => ['shipped', 'delivered'].includes(o.orderStatus)).length}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Recent Orders */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentOrders.length === 0 ? (
+            <p className="text-center py-4 text-gray-600">No orders found</p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Current Qty</TableHead>
-                  <TableHead>Reorder Level</TableHead>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.lowStockItems.map((item: any) => (
-                  <TableRow key={item.sku}>
-                    <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-                    <TableCell>{item.productName}</TableCell>
+                {recentOrders.map((order) => (
+                  <TableRow key={order._id}>
+                    <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                    <TableCell>{order.customer.name}</TableCell>
                     <TableCell>
-                      <Badge variant="destructive">{item.totalQuantity}</Badge>
+                      <Badge variant="outline">{order.orderStatus}</Badge>
                     </TableCell>
-                    <TableCell>{item.reorderLevel}</TableCell>
+                    <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>{formatDate(order.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Movements */}
-      {data?.recentMovements && data.recentMovements.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Stock Movements</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>By</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.recentMovements.map((m: any, i: number) => (
-                  <TableRow key={m._id || i}>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          m.movementType === "RECEIVE" ? "default" :
-                          m.movementType === "DISPATCH" ? "secondary" : "outline"
-                        }
-                      >
-                        {m.movementType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">{m.sku}</TableCell>
-                    <TableCell>{m.quantity}</TableCell>
-                    <TableCell>{m.user?.name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(m.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
