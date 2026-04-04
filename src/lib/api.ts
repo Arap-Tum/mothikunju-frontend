@@ -2,6 +2,35 @@ import axios from "axios";
 
 const API_BASE_URL = "https://muthokinju-warehouse-management-system.onrender.com";
 
+// Type definitions
+interface InventoryCreateData {
+  sku: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  reorderLevel: number;
+  storageLocation: string;
+  description?: string;
+}
+
+interface InventoryUpdateData {
+  productName?: string;
+  quantity?: number;
+  unitPrice?: number;
+  reorderLevel?: number;
+  storageLocation?: string;
+  description?: string;
+}
+
+interface StockReceiveData {
+  sku: string;
+  quantity: number;
+  batchNumber?: string;
+  expiryDate?: string;
+  supplier?: string;
+  receivingDate?: string;
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -47,13 +76,13 @@ export const usersApi = {
 // Inventory
 export const inventoryApi = {
   getAll: () => api.get("/api/inventory"),
-  create: (data: any) => api.post("/api/inventory", data),
-  update: (sku: string, data: any) => api.patch(`/api/inventory/${sku}`, data),
+  create: (data: InventoryCreateData) => api.post("/api/inventory", data),
+  update: (sku: string, data: InventoryUpdateData) => api.patch(`/api/inventory/${sku}`, data),
 };
 
 // Stock movements
 export const stockApi = {
-  receive: (data: any) => api.post("/api/stock/receive", data),
+  receive: (data: StockReceiveData) => api.post("/api/stock/receive", data),
   dispatch: (data: { sku: string; quantity: number }) =>
     api.post("/api/stock/dispatch", data),
   transfer: (data: { sku: string; sourceBatch: string; destinationBatch: string; quantity: number }) =>
